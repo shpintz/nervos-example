@@ -37,9 +37,12 @@ export function App() {
     const [storedValue, setStoredValue] = useState<number | undefined>();
     const [transactionInProgress, setTransactionInProgress] = useState(false);
     const toastId = React.useRef(null);
-    const [newStoredNumberInputValue, setNewStoredNumberInputValue] = useState<
-        number | undefined
-    >();
+
+
+    // Zombie config
+    const [urlName,setUrlName] = useState('');
+    const [zombieName,setZombieName] = useState('');
+    const [listZombies, setListZombies] = useState([]);
 
     useEffect(() => {
         if (transactionInProgress && !toastId.current) {
@@ -63,6 +66,15 @@ export function App() {
     }, [transactionInProgress, toastId.current]);
 
     const account = accounts?.[0];
+
+     // Grab list of zombies
+     useEffect(() => {
+        if (contract) {
+            setInterval(() => {
+                contract.getListZombies(account).then(setListZombies);
+            }, 10000);
+        }
+    }, [contract]);
 
     async function deployContract() {
         const _contract = new ZombieFactoryWrapper(web3);
@@ -94,7 +106,23 @@ export function App() {
         setStoredValue(undefined);
     }
 
+    // Create Zombie Function
+    async function createRandomZombie() {
+        try {
+            setTransactionInProgress(true);
+            await contract.createRandomZombie(zombieName, urlName, account);
 
+            toast(
+                'Successfully Created Zombie.',
+                { type: 'success' }
+            );
+        } catch (error) {
+            console.error(error);
+            toast.error('Fail to create Zombie');
+        } finally {
+            setTransactionInProgress(false);
+        }
+    }
 
     useEffect(() => {
         if (web3) {
@@ -157,16 +185,16 @@ export function App() {
                 <input
                     type="string"
                     placeholder="Enter Zombie url"
-                    // onChange={e => setUrlName(e.target.value)}
+                    onChange={e => setUrlName(e.target.value)}
                 />
                 <input
                     type="string"
                     placeholder="Zombie Name"
-                    // onChange={e => setZombieName(e.target.value)}
+                    onChange={e => setZombieName(e.target.value)}
                 />
-                 {/* // onClick={createRandomZombie} */}
+                 
 
-                <button disabled={!contract}>  
+                <button onClick={createRandomZombie} disabled={!contract}>  
                     Create Zombie
                 </button>
                 <br />
@@ -174,28 +202,19 @@ export function App() {
                 <div className="zombieFactory">
                     <h3> Zombies Gallery</h3>
                     <div className="zombies">
-                        {/* {listZombies.map(data => { */}
+                        {listZombies.map(data => { 
                             return (
-                                {/* <div className="singleZombie">
+                                <div className="singleZombie">
                                     <img key={data[0]} src={data[1]} style={{ width: 200, height: 200, border: '2px solid black' , borderRadius:10 }} />
                                     <div className="content">
                                         <p>Level:{data[3]} </p>
                                         <p>DNA: {data[2]}</p>
                                         <p>Name:{data[0]} </p>
                                     </div>
-                                </div> */}
-
-                                <div className="singleZombie">
-                                    <img key='1' src='https://avatars.githubusercontent.com/u/49249813?v=4' style={{ width: 200, height: 200, border: '2px solid black' , borderRadius:10 }} />
-                                    <div className="content">
-                                        <p>Level: 90000 </p>
-                                        <p>DNA: t0c000l00010102</p>
-                                        <p>Name: lyub </p>
-                                    </div>
                                 </div>
-            
+
                             )
-                        {/* })} */}
+                        })} 
                     </div>
                 </div>
             </div>
