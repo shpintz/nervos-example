@@ -2,6 +2,10 @@ import Web3 from 'web3';
 import * as ZombieFactoryJSON from '../../../build/contracts/ZombieFactory.json';
 import { ZombieFactory } from '../../types/ZombieFactory';
 
+const DEFAULT_SEND_OPTIONS = {
+    gas: 6000000
+};
+
 export class ZombieFactoryWrapper {
     web3: Web3;
 
@@ -37,7 +41,7 @@ export class ZombieFactoryWrapper {
     async createRandomZombie(name: string, imgURL: string, fromAddress: string) {
 
         const tx = await this.contract.methods.createRandomZombie(name, imgURL).send({
-            // ...DEFAULT_SEND_OPTIONS,
+            ...DEFAULT_SEND_OPTIONS,
             from: fromAddress,
             // value
         });
@@ -47,16 +51,20 @@ export class ZombieFactoryWrapper {
 
 
     async deploy(fromAddress: string) {
-        const contract = await this.contract
+        const deployTx = await (this.contract
             .deploy({
                 data: ZombieFactoryJSON.bytecode,
                 arguments: []
             })
             .send({
-                from: fromAddress
-            });
+                ...DEFAULT_SEND_OPTIONS,
+                from: fromAddress,
+                to: '0x0000000000000000000000000000000000000000'
+            } as any) as any);
 
-        this.useDeployed(contract.options.address);
+        this.useDeployed(deployTx.contractAddress);
+
+        return deployTx.transactionHash;
     }
 
    

@@ -9,10 +9,23 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import { ZombieFactoryWrapper } from '../lib/contracts/ZombieFactoryWrapper';
 
+import { PolyjuiceHttpProvider } from '@polyjuice-provider/web3';
+import { CONFIG } from '../config';
+
+import { AddressTranslator } from 'nervos-godwoken-integration';
+
 async function createWeb3() {
     // Modern dapp browsers...
     if ((window as any).ethereum) {
-        const web3 = new Web3((window as any).ethereum);
+        const godwokenRpcUrl = CONFIG.WEB3_PROVIDER_URL;
+        const providerConfig = {
+            rollupTypeHash: CONFIG.ROLLUP_TYPE_HASH,
+            ethAccountLockCodeHash: CONFIG.ETH_ACCOUNT_LOCK_CODE_HASH,
+            web3Url: godwokenRpcUrl
+        };
+        const provider = new PolyjuiceHttpProvider(godwokenRpcUrl, providerConfig);
+        const web3 = new Web3(provider || Web3.givenProvider);
+
 
         try {
             // Request account access if needed
@@ -34,7 +47,6 @@ export function App() {
     const [accounts, setAccounts] = useState<string[]>();
     const [balance, setBalance] = useState<bigint>();
     const [existingContractIdInputValue, setExistingContractIdInputValue] = useState<string>();
-    const [storedValue, setStoredValue] = useState<number | undefined>();
     const [transactionInProgress, setTransactionInProgress] = useState(false);
     const toastId = React.useRef(null);
     
@@ -42,8 +54,20 @@ export function App() {
     const [urlName,setUrlName] = useState('');
     const [zombieName,setZombieName] = useState('');
     const [listZombies, setListZombies] = useState([]);
-
+    
+    // godwoken polyjuice
+    const [polyjuiceAddress, setPolyjuiceAddress] = useState('');
+    const [deployTxHash,setDeployTxHash] = useState('')
    
+
+    useEffect(() => {
+        if (accounts?.[0]) {
+            const addressTranslator = new AddressTranslator();
+            setPolyjuiceAddress(addressTranslator.ethAddressToGodwokenShortAddress(accounts?.[0]));
+        } else {
+            setPolyjuiceAddress(undefined);
+        }
+    }, [accounts?.[0]]);
 
     useEffect(() => {
         if (transactionInProgress && !toastId.current) {
@@ -81,10 +105,12 @@ export function App() {
         const _contract = new ZombieFactoryWrapper(web3);
 
         try {
+            setDeployTxHash(undefined);
             setTransactionInProgress(true);
 
-            await _contract.deploy(account);
+            const transactionHash = await _contract.deploy(account);
 
+            setDeployTxHash(transactionHash);
             setExistingContractAddress(_contract.address);
             toast(
                 'Successfully deployed a smart-contract. You can now proceed to get or set the value in a smart contract.',
@@ -104,7 +130,6 @@ export function App() {
         _contract.useDeployed(contractAddress.trim());
 
         setContract(_contract);
-        setStoredValue(undefined);
     }
 
     // Create Zombie Function
@@ -154,8 +179,10 @@ export function App() {
 
             <header>
                 <p>Your ETH address: <b>{accounts?.[0]}</b></p>
-                <p>Balance: <b>{balance ? (balance / 10n ** 8n).toString() : <LoadingIndicator />} ETH</b></p>
+                <p>Your Polyjuice address: <b>{polyjuiceAddress || ' - '}</b></p>
+                <p>Nervos Layer 2 balance:{' '} <b>{balance ? (balance / 10n ** 8n).toString() : <LoadingIndicator />} ETH</b></p>
                 <p>Deployed contract address: <b>{contract?.address || '-'}</b></p> 
+                <p>Deploy transaction hash: <b>{deployTxHash || '-'}</b></p>
             </header>
             
         
